@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>To-Do Tracker</title>
+  <script>
+    // Apply saved theme (or system preference) before page paints
+    (function () {
+      let t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      // Demo links (used by mockup.html): #demo = light, #demo-dark = dark
+      if (location.hash === "#demo") t = "light";
+      if (location.hash === "#demo-dark") t = "dark";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <style>
+    :root {
+      --bg1: #eef2ff; --bg2: #f5f3ff;
+      --card: #ffffff; --text: #1e293b; --muted: #94a3b8;
+      --field: #f8fafc; --border: #e2e8f0; --row-border: #f1f5f9;
+      --head-bg: #f5f3ff; --head-text: #6366f1; --hover: #faf5ff;
+      --btn: #f1f5f9; --btn-hover: #e0e7ff;
+      --shadow: 0 4px 20px rgba(99, 102, 241, 0.12);
+      --high-bg: #fee2e2; --high: #dc2626;
+      --med-bg: #fef3c7; --med: #d97706;
+      --low-bg: #dcfce7; --low: #16a34a;
+      color-scheme: light;
+    }
+    :root[data-theme="dark"] {
+      --bg1: #0f172a; --bg2: #1e1b4b;
+      --card: #1e293b; --text: #e2e8f0; --muted: #64748b;
+      --field: #0f172a; --border: #334155; --row-border: #2b3a52;
+      --head-bg: #273449; --head-text: #a5b4fc; --hover: #263248;
+      --btn: #334155; --btn-hover: #4338ca;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      --high-bg: rgba(220, 38, 38, 0.2); --high: #f87171;
+      --med-bg: rgba(217, 119, 6, 0.2); --med: #fbbf24;
+      --low-bg: rgba(22, 163, 74, 0.2); --low: #4ade80;
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
+      background-attachment: fixed;
+      color: var(--text);
+      min-height: 100vh;
+      margin: 0;
+      padding: 2rem 1rem;
+      transition: background 0.3s, color 0.3s;
+    }
+    .app { max-width: 860px; margin: 0 auto; }
+    header { position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; }
+    h1 {
+      margin: 0;
+      font-size: 2rem;
+      text-align: center;
+      color: #b5432f; /* brick red */
+    }
+    #themeBtn {
+      position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+      width: 44px; height: 44px;
+      border: none; border-radius: 50%;
+      font-size: 1.3rem;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      cursor: pointer;
+    }
+    form, .card { background: var(--card); border-radius: 16px; box-shadow: var(--shadow); }
+    form { display: flex; gap: 0.5rem; flex-wrap: wrap; padding: 0.7rem; margin-bottom: 0.8rem; }
+    input[type="text"], input[type="search"], input:not([type]), input[type="date"], select, textarea {
+      padding: 0.4rem 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font: inherit;
+      font-size: 0.9rem;
+      background: var(--field);
+      color: var(--text);
+    }
+    textarea { resize: none; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid #8b5cf6; border-color: transparent; }
+    #item { flex: 2 1 160px; min-width: 0; }
+    #requestedBy { flex: 1 1 120px; min-width: 0; }
+    #notes { flex: 1 1 200px; min-width: 0; }
+    #submitBtn {
+      padding: 0.4rem 1.2rem;
+      border: none; border-radius: 8px;
+      font: inherit; font-weight: 600;
+      color: #fff;
+      background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+    #submitBtn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); }
+
+    /* Toolbar: search, filter, sort, counter */
+    .toolbar { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .toolbar input[type="search"] { flex: 1 1 180px; min-width: 0; }
+    .toolbar select { padding: 0.55rem 0.7rem; }
+    .toolbar label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; cursor: pointer; }
+    #counter { margin-left: auto; font-size: 0.9rem; color: var(--muted); font-weight: 600; }
+
+    .card { overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left;
+      padding: 0.8rem 1rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--head-text);
+      background: var(--head-bg);
+    }
+    td { padding: 0.8rem 1rem; border-top: 1px solid var(--row-border); vertical-align: top; }
+    td.br { display: none; }
+    tbody tr:hover { background: var(--hover); }
+    .note { font-size: 0.85rem; color: var(--muted); margin-top: 0.2rem; font-weight: 400; white-space: pre-wrap; word-break: break-word; }
+    td button {
+      border: none;
+      background: var(--btn);
+      border-radius: 8px;
+      padding: 0.3rem 0.5rem;
+      cursor: pointer;
+      margin-right: 0.25rem;
+      transition: background 0.15s;
+    }
+    td button:hover { background: var(--btn-hover); }
+    input[type="checkbox"] { width: 1.2rem; height: 1.2rem; accent-color: #8b5cf6; cursor: pointer; }
+    tr.done .c-item .title, tr.done .c-date, tr.done .c-by { text-decoration: line-through; color: var(--muted); }
+    .c-date.overdue { color: var(--high); font-weight: 600; }
+    .c-date.today { color: var(--med); font-weight: 600; }
+    tr.done .c-date.overdue, tr.done .c-date.today { color: var(--muted); font-weight: 400; }
+    .badge { display: inline-block; padding: 0.15rem 0.7rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+    .badge.High { background: var(--high-bg); color: var(--high); }
+    .badge.Medium { background: var(--med-bg); color: var(--med); }
+    .badge.Low { background: var(--low-bg); color: var(--low); }
+    .empty { text-align: center; padding: 2rem 1rem; color: var(--muted); }
+
+    #toast {
+      position: fixed; left: 50%; bottom: 1.25rem;
+      transform: translateX(-50%);
+      display: none; align-items: center; gap: 1rem;
+      background: #1e293b; color: #fff;
+      padding: 0.7rem 1rem; border-radius: 12px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+      z-index: 10;
+    }
+    :root[data-theme="dark"] #toast { background: #e2e8f0; color: #0f172a; }
+    #toast button {
+      border: none; background: none; font: inherit; font-weight: 700;
+      color: #a5b4fc; cursor: pointer; padding: 0.3rem;
+    }
+    :root[data-theme="dark"] #toast button { color: #4f46e5; }
+
+    /* ---------- Phone layout ---------- */
+    @media (max-width: 640px) {
+      body { padding: 1rem 0.75rem; }
+      h1 { font-size: 1.6rem; }
+      form { padding: 0.85rem; }
+      #item, #requestedBy, #submitBtn { flex: 1 1 100%; }
+      #priority, #deadline { flex: 1 1 45%; min-width: 0; }
+      #submitBtn { padding: 0.85rem; }
+      .toolbar select { flex: 1 1 40%; min-width: 0; }
+
+      thead { display: none; }
+      table, tbody { display: block; }
+      tbody tr {
+        display: flex; flex-wrap: wrap; align-items: center;
+        padding: 0.75rem 0.9rem;
+        border-top: 1px solid var(--row-border);
+        gap: 0.35rem 0.6rem;
+      }
+      tbody tr:first-child { border-top: none; }
+      td { border: none; padding: 0; }
+      td.br { display: block; flex-basis: 100%; height: 0; order: 4; }
+      .c-done { order: 1; }
+      .c-item { order: 2; flex: 1 1 0; min-width: 0; font-weight: 600; font-size: 1.05rem; word-break: break-word; }
+      .c-act { order: 3; white-space: nowrap; }
+      .c-prio { order: 5; margin-left: 1.8rem; }
+      .c-date { order: 6; font-size: 0.85rem; color: var(--muted); }
+      .c-by { order: 7; font-size: 0.85rem; color: var(--muted); }
+      .c-date:not(:empty)::before { content: "📅 "; }
+      .c-by:not(:empty)::before { content: "👤 "; }
+      td button { width: 42px; height: 42px; font-size: 1.15rem; margin-right: 0; }
+      input[type="checkbox"] { width: 1.5rem; height: 1.5rem; }
+      #toast { width: calc(100% - 1.5rem); justify-content: space-between; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>To-Do Tracker</h1>
+      <button id="themeBtn" type="button" title="Toggle light/dark mode" aria-label="Toggle light/dark mode"></button>
+    </header>
+
+    <form id="form">
+      <input id="item" placeholder="Item" required>
+      <select id="priority">
+        <option>High</option>
+        <option selected>Medium</option>
+        <option>Low</option>
+      </select>
+      <input id="deadline" type="date">
+      <input id="requestedBy" placeholder="Requested by">
+      <textarea id="notes" rows="1" placeholder="Notes (optional)"></textarea>
+      <button type="submit" id="submitBtn">Add</button>
+    </form>
+
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Search items, notes, requester">
+      <select id="filterPriority" title="Filter by priority">
+        <option value="">All priorities</option>
+        <option>High</option>
+        <option>Medium</option>
+        <option>Low</option>
+      </select>
+      <select id="sortBy" title="Sort by">
+        <option value="added">Sort: Added</option>
+        <option value="deadline">Sort: Deadline</option>
+        <option value="priority">Sort: Priority</option>
+      </select>
+      <label><input type="checkbox" id="showDone" checked> Show completed</label>
+      <span id="counter"></span>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>Done</th><th>Item</th><th>Priority</th><th>Deadline</th><th>Requested by</th><th></th></tr>
+        </thead>
+        <tbody id="list"></tbody>
+      </table>
+      <div id="empty" class="empty"></div>
+    </div>
+  </div>
+
+  <div id="toast"><span>Task deleted</span><button id="undoBtn" type="button">Undo</button></div>
+
+  <script>
+    // Demo mode (#demo / #demo-dark): sample tasks, nothing is saved or overwritten
+    const DEMO = location.hash === "#demo" || location.hash === "#demo-dark";
+    let tasks = [];
+    if (DEMO) {
+      const day = n => {
+        const d = new Date(); d.setDate(d.getDate() + n);
+        const p = x => String(x).padStart(2, "0");
+        return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+      };
+      tasks = [
+        { item: "Submit expense report", priority: "High", deadline: day(-2), requestedBy: "Sarah Chen", notes: "Attach all receipts from the Berlin trip", done: false },
+        { item: "Prepare Q4 budget slides", priority: "High", deadline: day(0), requestedBy: "Mark Davis", notes: "", done: false },
+        { item: "Book team offsite venue", priority: "Medium", deadline: day(4), requestedBy: "Priya Patel", notes: "Capacity for 20, near the station", done: false },
+        { item: "Renew software licences", priority: "Low", deadline: day(12), requestedBy: "IT Desk", notes: "", done: false },
+        { item: "Reply to vendor quote", priority: "Medium", deadline: day(-5), requestedBy: "Tom Ellis", notes: "", done: true }
+      ];
+    } else {
+      try { tasks = JSON.parse(localStorage.getItem("tasks") || "[]"); } catch (e) {}
+    }
+    let editTask = null;       // the task currently loaded in the form
+    let lastDeleted = null;    // { task, index } for undo
+    let toastTimer = null;
+
+    const $ = id => document.getElementById(id);
+    const PRIORITY_ORDER = { High: 0, Medium: 1, Low: 2 };
+
+    function save() {
+      if (DEMO) return;
+      try { localStorage.setItem("tasks", JSON.stringify(tasks)); } catch (e) {}
+    }
+
+    // ----- Theme -----
+    const themeBtn = $("themeBtn");
+    function showTheme() {
+      themeBtn.textContent = document.documentElement.dataset.theme === "dark" ? "☀️" : "🌙";
+    }
+    themeBtn.onclick = () => {
+      const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = next;
+      if (!DEMO) try { localStorage.setItem("theme", next); } catch (e) {}
+      showTheme();
+    };
+    showTheme();
+
+    // ----- Helpers -----
+    function todayStr() {
+      const d = new Date();
+      const p = n => String(n).padStart(2, "0");
+      return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+    }
+
+    function visibleTasks() {
+      const q = $("search").value.trim().toLowerCase();
+      const pr = $("filterPriority").value;
+      const showDone = $("showDone").checked;
+      const sortBy = $("sortBy").value;
+
+      const list = tasks.filter(t => {
+        if (!showDone && t.done) return false;
+        if (pr && t.priority !== pr) return false;
+        if (q && !((t.item || "") + " " + (t.notes || "") + " " + (t.requestedBy || "")).toLowerCase().includes(q)) return false;
+        return true;
+      });
+
+      // Array.sort is stable, so ties keep the order they were added in
+      list.sort((a, b) => {
+        if (!!a.done !== !!b.done) return a.done ? 1 : -1;   // completed items go to the bottom
+        if (sortBy === "deadline") {
+          if (!a.deadline && !b.deadline) return 0;
+          if (!a.deadline) return 1;
+          if (!b.deadline) return -1;
+          return a.deadline < b.deadline ? -1 : a.deadline > b.deadline ? 1 : 0;
+        }
+        if (sortBy === "priority") return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+        return 0;
+      });
+      return list;
+    }
+
+    function cell(cls, text) {
+      const td = document.createElement("td");
+      td.className = cls;
+      td.textContent = text;
+      return td;
+    }
+
+    // ----- Render -----
+    function render() {
+      const list = $("list");
+      list.innerHTML = "";
+      const today = todayStr();
+      const shown = visibleTasks();
+
+      const open = tasks.filter(t => !t.done).length;
+      $("counter").textContent = open + " open · " + (tasks.length - open) + " done";
+      $("empty").style.display = shown.length ? "none" : "block";
+      $("empty").textContent = tasks.length ? "No tasks match your filters." : "No tasks yet. Add one above.";
+
+      shown.forEach(t => {
+        const tr = document.createElement("tr");
+        if (t.done) tr.className = "done";
+
+        const doneTd = document.createElement("td");
+        doneTd.className = "c-done";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = !!t.done;
+        cb.onchange = () => { t.done = cb.checked; save(); render(); };
+        doneTd.appendChild(cb);
+        tr.appendChild(doneTd);
+
+        const itemTd = document.createElement("td");
+        itemTd.className = "c-item";
+        const title = document.createElement("div");
+        title.className = "title";
+        title.textContent = t.item;
+        itemTd.appendChild(title);
+        if (t.notes) {
+          const note = document.createElement("div");
+          note.className = "note";
+          note.textContent = t.notes;
+          itemTd.appendChild(note);
+        }
+        tr.appendChild(itemTd);
+
+        const prioTd = document.createElement("td");
+        prioTd.className = "c-prio";
+        const badge = document.createElement("span");
+        badge.className = "badge " + t.priority;
+        badge.textContent = t.priority;
+        prioTd.appendChild(badge);
+        tr.appendChild(prioTd);
+
+        // Deadline, with overdue / due-today highlighting
+        let dateText = t.deadline || "";
+        let dateCls = "c-date";
+        if (t.deadline && !t.done) {
+          if (t.deadline < today) { dateCls += " overdue"; dateText += " · overdue"; }
+          else if (t.deadline === today) { dateCls += " today"; dateText += " · today"; }
+        }
+        tr.appendChild(cell(dateCls, dateText));
+        tr.appendChild(cell("c-by", t.requestedBy || ""));
+
+        const actTd = document.createElement("td");
+        actTd.className = "c-act";
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "✏️";
+        editBtn.title = "Edit";
+        editBtn.onclick = () => {
+          $("item").value = t.item;
+          $("priority").value = t.priority;
+          $("deadline").value = t.deadline || "";
+          $("requestedBy").value = t.requestedBy || "";
+          $("notes").value = t.notes || "";
+          editTask = t;
+          $("submitBtn").textContent = "Save";
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        };
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "🗑️";
+        delBtn.title = "Delete";
+        delBtn.onclick = () => deleteTask(t);
+        actTd.appendChild(editBtn);
+        actTd.appendChild(delBtn);
+        tr.appendChild(actTd);
+
+        // line-break helper used only by the phone layout
+        const br = document.createElement("td");
+        br.className = "br";
+        tr.appendChild(br);
+
+        list.appendChild(tr);
+      });
+    }
+
+    // ----- Delete + undo -----
+    function deleteTask(t) {
+      const index = tasks.indexOf(t);
+      if (index < 0) return;
+      tasks.splice(index, 1);
+      if (editTask === t) resetForm();
+      lastDeleted = { task: t, index };
+      save();
+      render();
+      $("toast").style.display = "flex";
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(hideToast, 6000);
+    }
+
+    function hideToast() {
+      $("toast").style.display = "none";
+      lastDeleted = null;
+    }
+
+    $("undoBtn").onclick = () => {
+      if (!lastDeleted) return;
+      tasks.splice(lastDeleted.index, 0, lastDeleted.task);
+      clearTimeout(toastTimer);
+      hideToast();
+      save();
+      render();
+    };
+
+    // ----- Form -----
+    function resetForm() {
+      $("form").reset();
+      $("deadline").value = todayStr();   // new tasks default to today
+      editTask = null;
+      $("submitBtn").textContent = "Add";
+    }
+    $("deadline").value = todayStr();     // initial page load
+
+    $("form").addEventListener("submit", e => {
+      e.preventDefault();
+      const values = {
+        item: $("item").value,
+        priority: $("priority").value,
+        deadline: $("deadline").value,
+        requestedBy: $("requestedBy").value,
+        notes: $("notes").value.trim()
+      };
+      if (editTask) {
+        Object.assign(editTask, values);   // keeps its done state
+      } else {
+        tasks.push(Object.assign({ done: false }, values));
+      }
+      save();
+      render();
+      resetForm();
+    });
+
+    // ----- Toolbar -----
+    ["search", "filterPriority", "sortBy", "showDone"].forEach(id => {
+      $(id).addEventListener("input", render);
+      $(id).addEventListener("change", render);
+    });
+
+    render();
+  </script>
+</body>
+</html>

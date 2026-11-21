@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>To-Do Tracker – Galaxy S24 Ultra mockup</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(circle at 30% 20%, #3b3f6b 0%, #14152b 70%);
+      color: #cbd5e1;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 2rem 1rem;
+    }
+    h1 { margin: 0 0 0.25rem; font-size: 1.3rem; color: #fff; }
+    p.sub { margin: 0 0 2rem; font-size: 0.9rem; opacity: 0.7; text-align: center; }
+    .stage { display: flex; gap: 3rem; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+    .slot { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+    .label { font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; }
+
+    /* Scaled wrapper: the real phone is 432 x 935 CSS px */
+    .scale-box { width: calc(432px * var(--s, 1)); height: calc(935px * var(--s, 1)); }
+    .phone {
+      position: relative;
+      width: 432px; height: 935px;
+      padding: 10px;
+      border-radius: 40px;
+      background: linear-gradient(145deg, #9aa0a8 0%, #4a4f57 35%, #7b8189 60%, #3d4148 100%); /* titanium frame */
+      box-shadow: 0 30px 60px rgba(0,0,0,0.55), inset 0 0 0 2px rgba(255,255,255,0.15);
+      transform: scale(var(--s, 1));
+      transform-origin: top left;
+    }
+    /* side buttons (right edge) */
+    .phone::before, .phone::after {
+      content: ""; position: absolute; right: -4px; width: 4px;
+      background: linear-gradient(90deg, #5b6068, #8b9097); border-radius: 0 3px 3px 0;
+    }
+    .phone::before { top: 190px; height: 90px; }  /* volume */
+    .phone::after { top: 320px; height: 60px; }   /* power */
+
+    .screen {
+      position: relative; width: 412px; height: 915px;
+      border-radius: 30px; overflow: hidden; background: #000;
+      display: flex; flex-direction: column;
+    }
+    .status {
+      height: 34px; flex: none; padding: 0 22px;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px; font-weight: 600; position: relative; z-index: 2;
+    }
+    .status.light { background: #eef2ff; color: #1e293b; }
+    .status.dark { background: #0f172a; color: #e2e8f0; }
+    .status .right { display: flex; gap: 6px; align-items: center; font-size: 12px; }
+    .camera {
+      position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
+      width: 13px; height: 13px; border-radius: 50%;
+      background: radial-gradient(circle at 40% 40%, #2b3140 0%, #000 60%);
+      box-shadow: 0 0 0 2px #000; z-index: 3;
+    }
+    iframe { flex: 1; width: 100%; border: 0; background: #fff; display: block; }
+    .navbar { height: 22px; flex: none; display: flex; justify-content: center; align-items: center; }
+    .navbar.light { background: #f5f3ff; }
+    .navbar.dark { background: #1e1b4b; }
+    .navbar i { width: 120px; height: 4px; border-radius: 2px; }
+    .navbar.light i { background: #1e293b; opacity: 0.6; }
+    .navbar.dark i { background: #e2e8f0; opacity: 0.7; }
+  </style>
+</head>
+<body>
+  <h1>To-Do Tracker on Samsung Galaxy S24 Ultra</h1>
+  <p class="sub">Illustrative mockup · 412 × 915 CSS px screen, the S24 Ultra's typical size in Chrome</p>
+
+  <div class="stage">
+    <div class="slot">
+      <div class="scale-box"><div class="phone">
+        <div class="screen">
+          <div class="status light"><span>9:41</span><span class="right">5G ▂▄▆█ 🔋87%</span></div>
+          <div class="camera"></div>
+          <iframe src="index.html#demo" title="Light mode"></iframe>
+          <div class="navbar light"><i></i></div>
+        </div>
+      </div></div>
+      <div class="label">Light mode</div>
+    </div>
+
+    <div class="slot">
+      <div class="scale-box"><div class="phone">
+        <div class="screen">
+          <div class="status dark"><span>9:41</span><span class="right">5G ▂▄▆█ 🔋87%</span></div>
+          <div class="camera"></div>
+          <iframe src="index.html#demo-dark" title="Dark mode"></iframe>
+          <div class="navbar dark"><i></i></div>
+        </div>
+      </div></div>
+      <div class="label">Dark mode</div>
+    </div>
+  </div>
+
+  <script>
+    // Shrink the phones to fit the browser window
+    function fit() {
+      const s = Math.min(1, (innerHeight - 160) / 935, (innerWidth - 32) / (432 * 2 + 48));
+      document.documentElement.style.setProperty("--s", Math.max(0.35, s));
+    }
+    addEventListener("resize", fit);
+    fit();
+  </script>
+</body>
+</html>
